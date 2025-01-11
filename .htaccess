@@ -14,3 +14,9 @@ RewriteRule ^v1/users/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9
         Header set Cache-Control "public, max-age=3600, must-revalidate"
     </FilesMatch>
 </IfModule>
+
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, user-agent"
+</IfModule>
