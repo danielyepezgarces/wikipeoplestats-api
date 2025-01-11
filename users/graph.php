@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 
-include '../../config.php';
+include '../config.php';
 
 // Iniciar Memcached
 $memcache = new Memcached();
