@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 
 include '../config.php';
-include '../../languages.php';
+include '../languages.php';
 
 // Iniciar Memcached
 $memcache = new Memcached();

@@ -5,7 +5,7 @@ header("Content-Type: application/json");
 ini_set('display_errors', 1);  // Mostrar errores en la pantalla
 error_reporting(E_ALL);         // Reportar todos los errores
 
-include '../../config.php'; // Archivo de configuración de la base de datos
+include '../config.php'; // Archivo de configuración de la base de datos
 
 // Iniciar conexión a Memcached
 $memcache = new Memcached();
