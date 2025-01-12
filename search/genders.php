@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-include '/../languages.php';
+include '../languages.php';
 
 // Función para generar dominios basados en `wiki`
 function getDomainFromWiki($wiki) {
