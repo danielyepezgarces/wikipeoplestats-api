@@ -16,7 +16,7 @@ $startTime = microtime(true);
 
 // Obtener la acción, el filtro de tiempo y el filtro de proyecto
 $action = isset($_GET['action']) ? $_GET['action'] : '';
-$timeFrame = isset($_GET['interval']) ? $_GET['interval'] : 'alltime'; // Valor por defecto es 'alltime'
+$timeFrame = isset($_GET['interval']) ? $_GET['interval'] : 'all'; // Valor por defecto es 'alltime'
 $projectGroup = isset($_GET['group']) ? $_GET['group'] : ''; // Filtro por proyecto
 
 // Definir uso de caché
