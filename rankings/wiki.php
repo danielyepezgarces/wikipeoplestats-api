@@ -82,23 +82,24 @@ if ($cachedData) {
 
     // Consulta SQL general (con filtro de tiempo y grupo de proyecto)
     $sql = "
-        SELECT 
-            a.site AS site,
-            COUNT(DISTINCT a.wikidata_id) AS totalPeople,
-            SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
-            SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
-            SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN 1 ELSE 0 END) AS otherGenders,
-            COUNT(DISTINCT a.creator_username) AS totalContributions,
-            MAX(a.creation_date) AS lastUpdated, -- Ahora la fecha de creación del artículo
-            pr.group AS siteCode  -- Agregar el campo 'code' de la tabla 'project'
-        FROM articles a
-        LEFT JOIN people p ON p.wikidata_id = a.wikidata_id
-        JOIN project pr ON a.site = pr.site  -- Cambiar alias de 'project' a 'pr'
-        WHERE 1=1
-        $timeCondition
-        $projectCondition
-        GROUP BY a.site
-        ORDER BY totalContributions DESC
+       SELECT 
+    a.site AS site,
+    COUNT(a.wikidata_id) AS totalPeople,
+    SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
+    SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
+    SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN 1 ELSE 0 END) AS otherGenders,
+    COUNT(a.creator_username) AS totalContributions,
+    MAX(a.creation_date) AS lastUpdated,
+    pr.group AS siteCode
+FROM articles a
+JOIN people p ON p.wikidata_id = a.wikidata_id
+JOIN project pr ON a.site = pr.site
+WHERE 1=1
+$timeCondition
+$projectCondition
+GROUP BY a.site
+ORDER BY totalContributions DESC;
+
     ";
 
     $result = $conn->query($sql);
