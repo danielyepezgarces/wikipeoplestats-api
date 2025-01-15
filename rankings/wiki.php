@@ -67,7 +67,7 @@ if ($cachedData) {
         case '1y':
             $timeCondition = "AND a.creation_date >= DATE_SUB('$currentDate', INTERVAL 1 YEAR)";
             break;
-        case 'alltime':
+        case 'all':
         default:
             // No filtro de tiempo para todo el tiempo
             $timeCondition = "";
