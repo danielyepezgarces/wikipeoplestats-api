@@ -9,6 +9,8 @@ RewriteRule ^v1/users/stats/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9
 RewriteRule ^v1/users/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /users/graph.php?project=$1&username=$2&start_date=$3&end_date=$4 [L,QSA]
 
 RewriteRule ^v1/search/genders$ /search/genders.php [L,QSA]
+RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFrame=$2 [L,QSA]
+
 
 # Cache de respuestas JSON
 <IfModule mod_headers.c>
