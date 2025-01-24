@@ -1,5 +1,8 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 include '../languages.php';
 
