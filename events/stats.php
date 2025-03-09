@@ -50,8 +50,7 @@ $participantsData = file_get_contents($participantsApiUrl);
 $participants = json_decode($participantsData, true);
 
 if (!$participants || !is_array($participants)) {
-    echo json_encode(['error' => 'Failed to fetch participants']);
-    exit;
+    $participants = [];
 }
 
 $queries = [];
@@ -62,12 +61,7 @@ foreach ($participants as $participant) {
     $queries[] = "(a.creator_username = '$username' AND a.creation_date >= '$formattedJoinDate')";
 }
 
-if (empty($queries)) {
-    echo json_encode(['error' => 'No participants found']);
-    exit;
-}
-
-$condition = implode(' OR ', $queries);
+$condition = empty($queries) ? "1=0" : implode(' OR ', $queries);
 
 $sql = "
     SELECT COUNT(DISTINCT p.wikidata_id) AS totalPeople,
@@ -84,36 +78,35 @@ $sql = "
 ";
 
 $result = $conn->query($sql);
+$data = $result->fetch_assoc() ?? [
+    'totalPeople' => 0,
+    'totalWomen' => 0,
+    'totalMen' => 0,
+    'otherGenders' => 0,
+    'lastUpdated' => null
+];
 
-if ($result->num_rows > 0) {
-    $data = $result->fetch_assoc();
-    if ($data['totalPeople'] == 0) {
-        echo json_encode(['error' => 'No data found']);
-    } else {
-        $response = [
-            'event' => [
-                'id' => $event['id'],
-                'name' => $event['name'],
-                'event_page' => $event['event_page'],
-                'status' => $event['status'],
-                'timezone' => $event['timezone'],
-                'start_time' => $event['start_time'],
-                'end_time' => $event['end_time'],
-                'wikis' => $event['wikis'],
-                'topics' => $event['topics'],
-            ],
-            'totalPeople' => (int)$data['totalPeople'],
-            'totalWomen' => (int)$data['totalWomen'],
-            'totalMen' => (int)$data['totalMen'],
-            'otherGenders' => (int)$data['otherGenders'],
-            'lastUpdated' => $data['lastUpdated'] ?? null,
-            'participants' => $participants
-        ];
-        echo json_encode($response);
-    }
-} else {
-    echo json_encode(['error' => 'No data found']);
-}
+$response = [
+    'event' => [
+        'id' => $event['id'],
+        'name' => $event['name'],
+        'event_page' => $event['event_page'],
+        'status' => $event['status'],
+        'timezone' => $event['timezone'],
+        'start_time' => $event['start_time'],
+        'end_time' => $event['end_time'],
+        'wikis' => $event['wikis'],
+        'topics' => $event['topics'],
+    ],
+    'totalPeople' => (int)$data['totalPeople'],
+    'totalWomen' => (int)$data['totalWomen'],
+    'totalMen' => (int)$data['totalMen'],
+    'otherGenders' => (int)$data['otherGenders'],
+    'lastUpdated' => $data['lastUpdated'],
+    'participants' => $participants
+];
+
+echo json_encode($response);
 
 $conn->close();
 ?>
