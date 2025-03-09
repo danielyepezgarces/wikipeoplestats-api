@@ -132,10 +132,9 @@ $response = [
     'totalMen' => (int)$data['totalMen'],
     'otherGenders' => (int)$data['otherGenders'],
     'lastUpdated' => $data['lastUpdated'],
-    'participants' => $participants
+    'participants' => $participants,
+    'debug_sql' => $sql // Agregado para depuración
 ];
-
-$response['debug_sql'] = $sql;
 
 echo json_encode($response);
 
