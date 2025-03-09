@@ -20,7 +20,6 @@ if ($action === 'purge') {
 }
 
 $eventData = $memcache->get($eventCacheKey);
-
 if (!$eventData) {
     $eventUrl = "https://meta.wikimedia.org/w/rest.php/campaignevents/v0/event_registration/{$event_id}";
     $eventData = file_get_contents($eventUrl);
@@ -51,16 +50,30 @@ $timezone = $event['timezone'];
 $start_date = $event['start_time'];
 $end_date = $event['end_time'];
 
-$participantsUrl = "https://meta.wikimedia.org/w/rest.php/campaignevents/v0/event_registration/{$event_id}/participants";
-$params = ['include_private' => 'false'];
-$participantsApiUrl = $participantsUrl . '?' . http_build_query($params);
-
-$participantsData = file_get_contents($participantsApiUrl);
-$participants = json_decode($participantsData, true);
-
-if (!$participants || !is_array($participants)) {
-    $participants = [];
-}
+$participants = [];
+$last_participant_id = null;
+do {
+    $participantsUrl = "https://meta.wikimedia.org/w/rest.php/campaignevents/v0/event_registration/{$event_id}/participants";
+    $params = ['include_private' => 'false'];
+    if ($last_participant_id) {
+        $params['last_participant_id'] = $last_participant_id;
+    }
+    
+    $participantsApiUrl = $participantsUrl . '?' . http_build_query($params);
+    $participantsData = file_get_contents($participantsApiUrl);
+    $batch = json_decode($participantsData, true);
+    
+    if ($batch && is_array($batch)) {
+        $participants = array_merge($participants, $batch);
+        if (count($batch) == 20) {
+            $last_participant_id = end($batch)['participant_id'];
+        } else {
+            break;
+        }
+    } else {
+        break;
+    }
+} while (true);
 
 $queries = [];
 foreach ($participants as $participant) {
