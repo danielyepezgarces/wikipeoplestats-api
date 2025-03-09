@@ -89,6 +89,7 @@ if (!$cachedStats) {
                SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
                SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
                SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') THEN 1 ELSE 0 END) AS otherGenders,
+               COUNT(DISTINCT a.creator_username) AS totalContributions,
                MAX(w.last_updated) AS lastUpdated
         FROM people p
         JOIN articles a ON p.wikidata_id = a.wikidata_id
@@ -104,6 +105,7 @@ if (!$cachedStats) {
         'totalWomen' => 0,
         'totalMen' => 0,
         'otherGenders' => 0,
+        'totalContributions' => 0,
         'lastUpdated' => null
     ];
     
@@ -128,8 +130,9 @@ $response = [
     'totalWomen' => (int)$data['totalWomen'],
     'totalMen' => (int)$data['totalMen'],
     'otherGenders' => (int)$data['otherGenders'],
+    'totalContributions' => (int)$data['totalContributions'],
+    'participants' => $participants,
     'lastUpdated' => $data['lastUpdated'],
-    'participants' => $participants
 ];
 
 echo json_encode($response);
