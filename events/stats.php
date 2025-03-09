@@ -115,8 +115,6 @@ if (!$cachedStats) {
     $data = json_decode($cachedStats, true);
 }
 
-$response['debug_sql'] = $sql;
-
 $response = [
     'event' => [
         'id' => $event['id'],
@@ -136,6 +134,8 @@ $response = [
     'lastUpdated' => $data['lastUpdated'],
     'participants' => $participants
 ];
+
+$response['debug_sql'] = $sql;
 
 echo json_encode($response);
 
