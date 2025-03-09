@@ -102,6 +102,9 @@ if (!$cachedStats) {
     ";
 
     $result = $conn->query($sql);
+
+    error_log("SQL Query: " . $sql);
+
     $data = $result->fetch_assoc() ?? [
         'totalPeople' => 0,
         'totalWomen' => 0,
