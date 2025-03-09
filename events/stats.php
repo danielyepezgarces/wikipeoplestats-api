@@ -50,40 +50,22 @@ $timezone = $event['timezone'];
 $start_date = $event['start_time'];
 $end_date = $event['end_time'];
 
-$participants = [];
-$last_participant_id = null;
-do {
-    $participantsUrl = "https://meta.wikimedia.org/w/rest.php/campaignevents/v0/event_registration/{$event_id}/participants";
-    $params = ['include_private' => 'false'];
-    if ($last_participant_id) {
-        $params['last_participant_id'] = $last_participant_id;
-    }
-    
-    $participantsApiUrl = $participantsUrl . '?' . http_build_query($params);
-    $participantsData = file_get_contents($participantsApiUrl);
-    $batch = json_decode($participantsData, true);
-    
-    if ($batch && is_array($batch)) {
-        $participants = array_merge($participants, $batch);
-        if (count($batch) == 20) {
-            $last_participant_id = end($batch)['participant_id'];
-        } else {
-            break;
-        }
-    } else {
-        break;
-    }
-} while (true);
+// Obtener lista de participantes
+$participantsUrl = "https://meta.wikimedia.org/w/rest.php/campaignevents/v0/event_registration/{$event_id}/participants";
+$params = ['include_private' => 'false'];
+$participantsApiUrl = $participantsUrl . '?' . http_build_query($params);
+$participantsData = file_get_contents($participantsApiUrl);
+$participants = json_decode($participantsData, true);
 
-$queries = [];
-foreach ($participants as $participant) {
-    $username = $conn->real_escape_string($participant['user_name']);
-    $userJoinDate = substr($participant['user_registered_at'], 0, 8);
-    $formattedJoinDate = substr($userJoinDate, 0, 4) . '-' . substr($userJoinDate, 4, 2) . '-' . substr($userJoinDate, 6, 2);
-    $queries[] = "(a.creator_username = '$username' AND a.creation_date >= '$formattedJoinDate')";
+if (!$participants || !is_array($participants)) {
+    $participants = [];
 }
 
-$condition = empty($queries) ? "1=0" : implode(' OR ', $queries);
+$participantUsernames = array_map(function($p) use ($conn) {
+    return "'" . $conn->real_escape_string($p['user_name']) . "'";
+}, $participants);
+
+$participantCondition = empty($participantUsernames) ? "1=0" : "a.creator_username IN (" . implode(',', $participantUsernames) . ")";
 
 $cachedStats = $memcache->get($statsCacheKey);
 if (!$cachedStats) {
@@ -98,13 +80,10 @@ if (!$cachedStats) {
         JOIN project w ON a.site = w.site
         WHERE a.site = '{$project}'
               AND a.creation_date BETWEEN '$start_date' AND '$end_date'
-              AND ($condition)
+              AND ($participantCondition)
     ";
 
     $result = $conn->query($sql);
-
-    error_log("SQL Query: " . $sql);
-
     $data = $result->fetch_assoc() ?? [
         'totalPeople' => 0,
         'totalWomen' => 0,
@@ -136,7 +115,7 @@ $response = [
     'otherGenders' => (int)$data['otherGenders'],
     'lastUpdated' => $data['lastUpdated'],
     'participants' => $participants,
-    'debug_sql' => $sql // Agregado para depuración
+    'debug_sql' => $sql
 ];
 
 echo json_encode($response);
