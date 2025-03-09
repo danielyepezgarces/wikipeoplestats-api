@@ -133,6 +133,8 @@ $response = [
     'totalContributions' => (int)$data['totalContributions'],
     'participants' => $participants,
     'lastUpdated' => $data['lastUpdated'],
+    'cachedUntil' => gmdate('c', time() + $cacheDuration)
+
 ];
 
 echo json_encode($response);
