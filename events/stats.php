@@ -8,8 +8,17 @@ $memcache->addServer('localhost', 11211);
 
 $project = isset($_GET['project']) ? $conn->real_escape_string($_GET['project']) : '';
 $event_id = isset($_GET['event_id']) ? $conn->real_escape_string($_GET['event_id']) : '';
+$action = isset($_GET['action']) ? $_GET['action'] : '';
 
 $eventCacheKey = "event_{$event_id}";
+$statsCacheKey = "stats_{$event_id}_{$project}";
+
+if ($action === 'purge') {
+    $memcache->delete($statsCacheKey);
+    echo json_encode(['message' => 'Statistics cache purged']);
+    exit;
+}
+
 $eventData = $memcache->get($eventCacheKey);
 
 if (!$eventData) {
@@ -63,28 +72,35 @@ foreach ($participants as $participant) {
 
 $condition = empty($queries) ? "1=0" : implode(' OR ', $queries);
 
-$sql = "
-    SELECT COUNT(DISTINCT p.wikidata_id) AS totalPeople,
-           SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
-           SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
-           SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') THEN 1 ELSE 0 END) AS otherGenders,
-           MAX(w.last_updated) AS lastUpdated
-    FROM people p
-    JOIN articles a ON p.wikidata_id = a.wikidata_id
-    JOIN project w ON a.site = w.site
-    WHERE a.site = '{$project}'
-          AND a.creation_date BETWEEN '$start_date' AND '$end_date'
-          AND ($condition)
-";
+$cachedStats = $memcache->get($statsCacheKey);
+if (!$cachedStats) {
+    $sql = "
+        SELECT COUNT(DISTINCT p.wikidata_id) AS totalPeople,
+               SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
+               SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
+               SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') THEN 1 ELSE 0 END) AS otherGenders,
+               MAX(w.last_updated) AS lastUpdated
+        FROM people p
+        JOIN articles a ON p.wikidata_id = a.wikidata_id
+        JOIN project w ON a.site = w.site
+        WHERE a.site = '{$project}'
+              AND a.creation_date BETWEEN '$start_date' AND '$end_date'
+              AND ($condition)
+    ";
 
-$result = $conn->query($sql);
-$data = $result->fetch_assoc() ?? [
-    'totalPeople' => 0,
-    'totalWomen' => 0,
-    'totalMen' => 0,
-    'otherGenders' => 0,
-    'lastUpdated' => null
-];
+    $result = $conn->query($sql);
+    $data = $result->fetch_assoc() ?? [
+        'totalPeople' => 0,
+        'totalWomen' => 0,
+        'totalMen' => 0,
+        'otherGenders' => 0,
+        'lastUpdated' => null
+    ];
+    
+    $memcache->set($statsCacheKey, json_encode($data), 3600);
+} else {
+    $data = json_decode($cachedStats, true);
+}
 
 $response = [
     'event' => [
