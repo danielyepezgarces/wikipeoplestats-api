@@ -1,0 +1,103 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "WikiPeopleStats API",
+      "version": "1.0.0",
+ "description": "This API provides statistics and insights to measure the gender gap across Wikipedia, Wikiquote, Wikisource, and Wikidata. It offers data on gender distribution, user activity, event participation, and rankings to support research and initiatives aimed at closing the gender gap in these Wikimedia projects."
+    },
+    "servers": [
+      { "url": "https://api.wikipeoplestats.org/v1" }
+    ],
+    "tags": [
+      { "name": "Genders", "description": "Endpoints related to gender statistics" },
+      { "name": "Users", "description": "Endpoints related to user statistics" },
+      { "name": "Events", "description": "Endpoints related to events" },
+      { "name": "Rankings", "description": "Endpoints related to rankings" }
+    ],
+    "paths": {
+      "/genders/graph/{project}/{start_date}/{end_date}": {
+        "get": {
+          "tags": ["Genders"],
+          "summary": "Gender graph",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "start_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } },
+            { "name": "end_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } }
+          ],
+          "responses": { "200": { "description": "Graph data", "content": { "application/json": {} } } }
+        }
+      },
+      "/genders/stats/{project}/{start_date}/{end_date}": {
+        "get": {
+          "tags": ["Genders"],
+          "summary": "Gender statistics",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "start_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } },
+            { "name": "end_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } }
+          ],
+          "responses": { "200": { "description": "Statistics data", "content": { "application/json": {} } } }
+        }
+      },
+      "/users/stats/{project}/{username}/{start_date}/{end_date}": {
+        "get": {
+          "tags": ["Users"],
+          "summary": "User statistics",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "start_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } },
+            { "name": "end_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } }
+          ],
+          "responses": { "200": { "description": "User data", "content": { "application/json": {} } } }
+        }
+      },
+      "/users/graph/{project}/{username}/{start_date}/{end_date}": {
+        "get": {
+          "tags": ["Users"],
+          "summary": "User graph",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "start_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } },
+            { "name": "end_date", "in": "path", "required": false, "schema": { "type": "string", "format": "date" } }
+          ],
+          "responses": { "200": { "description": "User graph data", "content": { "application/json": {} } } }
+        }
+      },
+      "/events/stats/{project}/{event_id}": {
+        "get": {
+          "tags": ["Events"],
+          "summary": "Event statistics",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "event_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          ],
+          "responses": { "200": { "description": "Event statistics data", "content": { "application/json": {} } } }
+        }
+      },
+      "/events/graph/{project}/{event_id}": {
+        "get": {
+          "tags": ["Events"],
+          "summary": "Event graph",
+          "parameters": [
+            { "name": "project", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "event_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+          ],
+          "responses": { "200": { "description": "Event graph data", "content": { "application/json": {} } } }
+        }
+      },
+      "/rankings/{group}/{timeFrame}": {
+        "get": {
+          "tags": ["Rankings"],
+          "summary": "Wikipedia rankings",
+          "parameters": [
+            { "name": "group", "in": "path", "required": true, "schema": { "type": "string" } },
+            { "name": "timeFrame", "in": "path", "required": true, "schema": { "type": "string" } }
+          ],
+          "responses": { "200": { "description": "Rankings list", "content": { "application/json": {} } } }
+        }
+      }
+    }
+  }
+  
