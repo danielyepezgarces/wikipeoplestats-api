@@ -23,4 +23,5 @@ RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFram
     <FilesMatch "\.json$">
         Header set Cache-Control "public, max-age=3600, must-revalidate"
     </FilesMatch>
+Header set Referrer-Policy "no-referrer"
 </IfModule>
