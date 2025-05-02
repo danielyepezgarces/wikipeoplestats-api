@@ -18,13 +18,9 @@ RewriteRule ^v1/search/genders$ /search/genders.php [L,QSA]
 RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFrame=$2 [L,QSA]
 
 
-# Cache de respuestas JSON
 <IfModule mod_headers.c>
     <FilesMatch "\.json$">
         Header set Cache-Control "public, max-age=3600, must-revalidate"
     </FilesMatch>
-</IfModule>
-
-<IfModule mod_headers.c>
-  Header set Referrer-Policy "no-referrer"
+    Header set Referrer-Policy "no-referrer"
 </IfModule>
