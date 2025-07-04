@@ -92,7 +92,7 @@ if (empty($start_date) && empty($end_date)) {
             other_genders AS otherGenders,
             last_updated AS lastUpdated
         FROM site_aggregates
-        WHERE site = '{$conn->real_escape_string($wikiId)}'
+        WHERE site = '{$wiki['wiki']}'
         LIMIT 1
     ";
 } else {
