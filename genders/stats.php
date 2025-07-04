@@ -1,11 +1,6 @@
 <?php
-
-// Conexión a base de datos
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-if ($conn->connect_error) {
-    http_response_code(500);
-    die(json_encode(['error' => 'Error de conexión a la base de datos']));
-}
+include '../config.php';
+include '../languages.php';
 
 // Asumimos que $wiki está definido y contiene los datos del sitio
 $wikiId = $wiki['wiki'];

@@ -672,6 +672,7 @@ $wikis = [
     ['code' => 'zea', 'wiki' => 'zeawiki', 'creation_date' => '2007-01-01'],
     ['code' => 'zh', 'wiki' => 'zhwiki', 'creation_date' => '2001-10-16'],
     ['code' => 'zu', 'wiki' => 'zuwiki', 'creation_date' => '2007-01-01'],
+    ['code' => 'zu', 'wiki' => 'wikidatawiki', 'creation_date' => '2012-10-29'],
 ];
 
 // Idioma predeterminado
