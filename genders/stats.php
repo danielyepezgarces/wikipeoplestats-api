@@ -126,9 +126,6 @@ if (empty($start_date) && empty($end_date)) {
     ";
 }
 
-
-$sql .= " AND a.site = '{$wiki['wiki']}'";  // Usar el valor de wiki obtenido
-
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
