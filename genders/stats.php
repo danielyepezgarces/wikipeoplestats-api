@@ -1,28 +1,38 @@
 <?php
+// Encabezados CORS
+header('Content-Type: application/json');
+
+// Preflight para CORS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+// Includes y configuración
 include '../config.php';
 include '../languages.php';
 
-// Asumimos que $wiki está definido y contiene los datos del sitio
+// Asumimos que $wiki está definido correctamente
 $wikiId = $wiki['wiki'];
 $creationDate = $wiki['creation_date'];
 
-// Establecer fechas
-$start_date = $_GET['start_date'] ?? $creationDate;
-$end_date = $_GET['end_date'] ?? date('Y-m-d');
-
-// Determinar si es rango completo
+// Escapar fechas
+$start_date = $conn->real_escape_string($_GET['start_date'] ?? $creationDate);
+$end_date = $conn->real_escape_string($_GET['end_date'] ?? date('Y-m-d'));
 $isFullRange = ($start_date === $creationDate && $end_date === date('Y-m-d'));
 
-// Clave de caché
 $cacheKey = "wikistats_{$wikiId}_{$start_date}_{$end_date}";
 
+// 🔁 Purgar caché si se solicita
 if (isset($_GET['action']) && $_GET['action'] === 'purge') {
-    $memcache->delete($cacheKey);
+    if ($memcached) {
+        $memcached->delete($cacheKey);
+    }
     echo json_encode(['message' => 'Cache purged successfully.']);
     exit;
 }
 
-// Intentar obtener datos desde Memcached
+// ⏱️ Verificar caché
 if ($memcached) {
     $cachedResult = $memcached->get($cacheKey);
     if ($cachedResult !== false) {
@@ -31,9 +41,8 @@ if ($memcached) {
     }
 }
 
-// Construir la consulta SQL
+// 📊 Construir consulta
 if ($isFullRange) {
-    // Consulta optimizada desde resumen
     $sql = "
         SELECT
             total_people AS totalPeople,
@@ -46,7 +55,6 @@ if ($isFullRange) {
         LIMIT 1
     ";
 } else {
-    // Consulta completa con filtros
     $sql = "
         SELECT
             COUNT(DISTINCT a.wikidata_id) AS totalPeople,
@@ -63,20 +71,20 @@ if ($isFullRange) {
     ";
 }
 
-// Ejecutar la consulta
+// 🧾 Ejecutar consulta
 $result = $conn->query($sql);
 if (!$result) {
     http_response_code(500);
-    die(json_encode(['error' => 'Error en la consulta: ' . $conn->error]));
+    echo json_encode(['error' => 'Error en la consulta: ' . $conn->error]);
+    exit;
 }
 
 $data = $result->fetch_assoc();
 
-// Guardar en caché si aplica
+// 💾 Guardar en caché por 12 horas
 if ($memcached && $data) {
-    $memcached->set($cacheKey, $data, 3600); // 1 hora
+    $memcached->set($cacheKey, $data, 43200); // 12h en segundos
 }
 
-// Devolver respuesta
-header('Content-Type: application/json');
+// 📤 Respuesta final
 echo json_encode($data);
