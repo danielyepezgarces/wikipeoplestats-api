@@ -1,142 +1,81 @@
 <?php
-header("Content-Type: application/json");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-include '../config.php';
-include '../languages.php';
+// Conexión a base de datos
+$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+if ($conn->connect_error) {
+    http_response_code(500);
+    die(json_encode(['error' => 'Error de conexión a la base de datos']));
+}
 
-// Iniciar Memcached
-$memcache = new Memcached();
-$memcache->addServer('localhost', 11211); // Cambia según tu configuración
+// Asumimos que $wiki está definido y contiene los datos del sitio
+$wikiId = $wiki['wiki'];
+$creationDate = $wiki['creation_date'];
 
-// Medir tiempo de inicio
-$startTime = microtime(true);
+// Establecer fechas
+$start_date = $_GET['start_date'] ?? $creationDate;
+$end_date = $_GET['end_date'] ?? date('Y-m-d');
 
-// Obtener el valor de project
-$project = isset($_GET['project']) ? $_GET['project'] : '';
-$project = $conn->real_escape_string($project);  // Escapar para prevenir inyecciones SQL
+// Determinar si es rango completo
+$isFullRange = ($start_date === $creationDate && $end_date === date('Y-m-d'));
 
-// Normalizar el valor de project para que coincida con las claves de wikis
-$project = str_replace(['.wikipedia.org', '.wikiquote.org', '.wikisource.org', '.wikipedia', '.wikiquote', '.wikisource'], '', $project);
+// Clave de caché
+$cacheKey = "wikistats_{$wikiId}_{$start_date}_{$end_date}";
 
-// Buscar la wiki correspondiente en el array wikis
-$wiki_key = array_search($project, array_column($wikis, 'wiki'));
-
-// Si no se encuentra, intentar variantes posibles
-if ($wiki_key === false) {
-    $variants = [
-        $project,             // Buscar directamente
-        $project . 'wiki',    // Ej.: "eswiki", "enwiki"
-        $project . 'wikiquote', // Ej.: "enwikiquote"
-        $project . 'wikisource', // Ej.: "dewikisource"
-    ];
-
-    foreach ($variants as $variant) {
-        $wiki_key = array_search($variant, array_column($wikis, 'wiki'));
-        if ($wiki_key !== false) {
-            break; // Salir si encontramos una coincidencia
-        }
+// Intentar obtener datos desde Memcached
+if ($memcached) {
+    $cachedResult = $memcached->get($cacheKey);
+    if ($cachedResult !== false) {
+        echo json_encode($cachedResult);
+        exit;
     }
 }
 
-// Verificar si encontramos el proyecto en wikis
-if ($wiki_key !== false) {
-    // Aquí puedes acceder a los datos de la wiki correspondiente
-    $wiki = $wikis[$wiki_key];
+// Construir la consulta SQL
+if ($isFullRange) {
+    // Consulta optimizada desde resumen
+    $sql = "
+        SELECT
+            total_people AS totalPeople,
+            total_women AS totalWomen,
+            total_men AS totalMen,
+            other_genders AS otherGenders,
+            last_updated AS lastUpdated
+        FROM site_aggregates
+        WHERE site = '{$conn->real_escape_string($wikiId)}'
+        LIMIT 1
+    ";
 } else {
-    // Si no se encuentra, enviar un error
-    echo json_encode(['error' => 'Project not found']);
-    exit;
+    // Consulta completa con filtros
+    $sql = "
+        SELECT
+            COUNT(DISTINCT a.wikidata_id) AS totalPeople,
+            COUNT(DISTINCT CASE WHEN p.gender = 'Q6581072' THEN a.wikidata_id END) AS totalWomen,
+            COUNT(DISTINCT CASE WHEN p.gender = 'Q6581097' THEN a.wikidata_id END) AS totalMen,
+            COUNT(DISTINCT CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN a.wikidata_id END) AS otherGenders,
+            COUNT(DISTINCT a.creator_username) AS totalContributions,
+            MAX(w.last_updated) AS lastUpdated
+        FROM articles a
+        LEFT JOIN people p ON p.wikidata_id = a.wikidata_id
+        JOIN project w ON a.site = w.site
+        WHERE a.creation_date BETWEEN '{$start_date}' AND '{$end_date}'
+          AND a.site = '{$conn->real_escape_string($wikiId)}'
+    ";
 }
 
-$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
-$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
-
-// Si no se proporcionan fechas, usar valores predeterminados
-if (empty($start_date)) {
-    $start_date = $wikis[$wiki_key]['creation_date'];
-}
-if (empty($end_date)) {
-    $end_date = date('Y-m-d');
-}
-
-// Definir la clave de caché (más limpia, sin redundancia)
-$cacheKey = "wikistats_{$wiki['wiki']}_{$start_date}_{$end_date}";
-
-if (isset($_GET['action']) && $_GET['action'] === 'purge') {
-    $memcache->delete($cacheKey);
-    echo json_encode(['message' => 'Cache purged successfully.']);
-    exit;
-}
-
-// Comprobar si el caché existe
-$cachedResponse = $memcache->get($cacheKey);
-
-// Duración del caché en segundos (6 horas)
-$cacheDuration = 21600;
-
-// Si la respuesta está en caché, devolverla
-if ($cachedResponse) {
-    $response = json_decode($cachedResponse, true);
-
-    // Medir el tiempo total de ejecución
-    $executionTime = microtime(true) - $startTime;
-    $response['executionTime'] = round($executionTime * 1000, 2); // En milisegundos
-
-    echo json_encode($response);
-    exit;
-}
-
-// Definir la consulta SQL
-$sql = "
-    SELECT
-        COUNT(DISTINCT a.wikidata_id) AS totalPeople,
-        SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
-        SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
-        SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN 1 ELSE 0 END) AS otherGenders,
-        COUNT(DISTINCT a.creator_username) AS totalContributions,
-        MAX(w.last_updated) AS lastUpdated
-    FROM articles a
-    LEFT JOIN people p ON p.wikidata_id = a.wikidata_id
-    JOIN project w ON a.site = w.site
-    WHERE a.creation_date >= '$start_date'
-        AND a.creation_date <= '$end_date'
-";
-
-$sql .= " AND a.site = '{$wiki['wiki']}'";  // Usar el valor de wiki obtenido
-
+// Ejecutar la consulta
 $result = $conn->query($sql);
-
-if ($result->num_rows > 0) {
-    $data = $result->fetch_assoc();
-
-    // Verificar si todos los conteos son cero
-    if ($data['totalPeople'] == 0 && $data['totalWomen'] == 0 && $data['totalMen'] == 0 && $data['otherGenders'] == 0) {
-        echo json_encode(['error' => 'No data found']);
-    } else {
-        // Generar la respuesta
-        $response = [
-            'totalPeople' => (int)$data['totalPeople'],
-            'totalWomen' => (int)$data['totalWomen'],
-            'totalMen' => (int)$data['totalMen'],
-            'otherGenders' => (int)$data['otherGenders'],
-            'lastUpdated' => $data['lastUpdated'] ? $data['lastUpdated'] : null,
-        ];
-
-        // Almacenar la respuesta en caché
-        $memcache->set($cacheKey, json_encode($response), $cacheDuration);
-
-        // Medir el tiempo total de ejecución
-        $executionTime = microtime(true) - $startTime;
-        $response['executionTime'] = round($executionTime * 1000, 2); // En milisegundos
-
-        echo json_encode($response);
-    }
-} else {
-    echo json_encode(['error' => 'No data found']);
+if (!$result) {
+    http_response_code(500);
+    die(json_encode(['error' => 'Error en la consulta: ' . $conn->error]));
 }
 
-$conn->close();
-?>
+$data = $result->fetch_assoc();
+
+// Guardar en caché si aplica
+if ($memcached && $data) {
+    $memcached->set($cacheKey, $data, 3600); // 1 hora
+}
+
+// Devolver respuesta
+header('Content-Type: application/json');
+echo json_encode($data);
