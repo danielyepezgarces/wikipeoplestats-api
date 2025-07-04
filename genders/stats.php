@@ -1,90 +1,117 @@
 <?php
 // Encabezados CORS
-header('Content-Type: application/json');
+header("Content-Type: application/json");
 
-// Preflight para CORS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Includes y configuración
 include '../config.php';
 include '../languages.php';
 
-// Asumimos que $wiki está definido correctamente
+// Iniciar Memcached
+$memcache = new Memcached();
+$memcache->addServer('localhost', 11211); // Ajusta si tu host o puerto es distinto
+
+$startTime = microtime(true);
+
+// Obtener y limpiar el parámetro project
+$project = $_GET['project'] ?? '';
+$project = $conn->real_escape_string($project);
+
+// Normalizar (eliminar extensiones)
+$project = str_replace(
+    ['.wikipedia.org', '.wikiquote.org', '.wikisource.org', '.wikipedia', '.wikiquote', '.wikisource'],
+    '',
+    $project
+);
+
+// Buscar en el array wikis
+$wiki_key = array_search($project, array_column($wikis, 'wiki'));
+
+// Si no está, intenta variantes comunes
+if ($wiki_key === false) {
+    foreach ([$project, $project . 'wiki', $project . 'wikiquote', $project . 'wikisource'] as $variant) {
+        $wiki_key = array_search($variant, array_column($wikis, 'wiki'));
+        if ($wiki_key !== false) break;
+    }
+}
+
+// Si no se encuentra el wiki, abortar
+if ($wiki_key === false) {
+    echo json_encode(['error' => 'Project not found']);
+    exit;
+}
+
+$wiki = $wikis[$wiki_key];
 $wikiId = $wiki['wiki'];
 $creationDate = $wiki['creation_date'];
 
-// Escapar fechas
 $start_date = $conn->real_escape_string($_GET['start_date'] ?? $creationDate);
 $end_date = $conn->real_escape_string($_GET['end_date'] ?? date('Y-m-d'));
-$isFullRange = ($start_date === $creationDate && $end_date === date('Y-m-d'));
 
+// Clave para Memcached
 $cacheKey = "wikistats_{$wikiId}_{$start_date}_{$end_date}";
 
-// 🔁 Purgar caché si se solicita
+// Purgar caché si se solicita
 if (isset($_GET['action']) && $_GET['action'] === 'purge') {
-    if ($memcached) {
-        $memcached->delete($cacheKey);
-    }
-    echo json_encode(['message' => 'Cache purged successfully.']);
+    $memcache->delete($cacheKey);
+    echo json_encode([
+        'message' => 'Cache purged successfully.',
+        'cacheKey' => $cacheKey,
+        'project' => $wikiId,
+        'start_date' => $start_date,
+        'end_date' => $end_date,
+        'executionTime' => round((microtime(true) - $startTime) * 1000, 2)
+    ]);
     exit;
 }
 
-// ⏱️ Verificar caché
-if ($memcached) {
-    $cachedResult = $memcached->get($cacheKey);
-    if ($cachedResult !== false) {
-        echo json_encode($cachedResult);
-        exit;
-    }
+// Si está en caché, devolverlo
+$cachedResponse = $memcache->get($cacheKey);
+$cacheDuration = 21600; // 6 horas
+
+if ($cachedResponse) {
+    $response = json_decode($cachedResponse, true);
+    $response['executionTime'] = round((microtime(true) - $startTime) * 1000, 2);
+    echo json_encode($response);
+    exit;
 }
 
-// 📊 Construir consulta
-if ($isFullRange) {
-    $sql = "
-        SELECT
-            total_people AS totalPeople,
-            total_women AS totalWomen,
-            total_men AS totalMen,
-            other_genders AS otherGenders,
-            last_updated AS lastUpdated
-        FROM site_aggregates
-        WHERE site = '{$conn->real_escape_string($wikiId)}'
-        LIMIT 1
-    ";
-} else {
-    $sql = "
-        SELECT
-            COUNT(DISTINCT a.wikidata_id) AS totalPeople,
-            COUNT(DISTINCT CASE WHEN p.gender = 'Q6581072' THEN a.wikidata_id END) AS totalWomen,
-            COUNT(DISTINCT CASE WHEN p.gender = 'Q6581097' THEN a.wikidata_id END) AS totalMen,
-            COUNT(DISTINCT CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN a.wikidata_id END) AS otherGenders,
-            COUNT(DISTINCT a.creator_username) AS totalContributions,
-            MAX(w.last_updated) AS lastUpdated
-        FROM articles a
-        LEFT JOIN people p ON p.wikidata_id = a.wikidata_id
-        JOIN project w ON a.site = w.site
-        WHERE a.creation_date BETWEEN '{$start_date}' AND '{$end_date}'
-          AND a.site = '{$conn->real_escape_string($wikiId)}'
-    ";
-}
+// Consulta SQL principal
+$sql = "
+    SELECT
+        COUNT(DISTINCT a.wikidata_id) AS totalPeople,
+        SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
+        SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
+        SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') OR p.gender IS NULL THEN 1 ELSE 0 END) AS otherGenders,
+        COUNT(DISTINCT a.creator_username) AS totalContributions,
+        MAX(w.last_updated) AS lastUpdated
+    FROM articles a
+    LEFT JOIN people p ON p.wikidata_id = a.wikidata_id
+    JOIN project w ON a.site = w.site
+    WHERE a.creation_date BETWEEN '$start_date' AND '$end_date'
+      AND a.site = '$wikiId'
+";
 
-// 🧾 Ejecutar consulta
 $result = $conn->query($sql);
-if (!$result) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Error en la consulta: ' . $conn->error]);
-    exit;
+
+if ($result && $result->num_rows > 0) {
+    $data = $result->fetch_assoc();
+
+    if ((int)$data['totalPeople'] === 0) {
+        echo json_encode(['error' => 'No data found']);
+    } else {
+        $response = [
+            'totalPeople' => (int)$data['totalPeople'],
+            'totalWomen' => (int)$data['totalWomen'],
+            'totalMen' => (int)$data['totalMen'],
+            'otherGenders' => (int)$data['otherGenders'],
+            'lastUpdated' => $data['lastUpdated'] ?: null,
+            'executionTime' => round((microtime(true) - $startTime) * 1000, 2)
+        ];
+
+        $memcache->set($cacheKey, json_encode($response), $cacheDuration);
+        echo json_encode($response);
+    }
+} else {
+    echo json_encode(['error' => 'No data found']);
 }
 
-$data = $result->fetch_assoc();
-
-// 💾 Guardar en caché por 12 horas
-if ($memcached && $data) {
-    $memcached->set($cacheKey, $data, 43200); // 12h en segundos
-}
-
-// 📤 Respuesta final
-echo json_encode($data);
+$conn->close();
