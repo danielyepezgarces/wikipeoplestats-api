@@ -16,6 +16,12 @@ $isFullRange = ($start_date === $creationDate && $end_date === date('Y-m-d'));
 // Clave de caché
 $cacheKey = "wikistats_{$wikiId}_{$start_date}_{$end_date}";
 
+if (isset($_GET['action']) && $_GET['action'] === 'purge') {
+    $memcache->delete($cacheKey);
+    echo json_encode(['message' => 'Cache purged successfully.']);
+    exit;
+}
+
 // Intentar obtener datos desde Memcached
 if ($memcached) {
     $cachedResult = $memcached->get($cacheKey);
