@@ -24,3 +24,9 @@ RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFram
     </FilesMatch>
     Header set Referrer-Policy "no-referrer"
 </IfModule>
+
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
