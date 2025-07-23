@@ -29,7 +29,7 @@ SELECT
         SELECT u.username
         FROM user_roles ur
         JOIN users u ON u.id = ur.user_id
-        WHERE ur.chapter_id = c.id AND ur.role_id = 1
+        WHERE ur.chapter_id = c.id AND ur.role_id = 3
         LIMIT 1
     ) AS admin_name,
     (
