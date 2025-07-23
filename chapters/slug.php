@@ -21,7 +21,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'purge') {
     $memcache->addServer('localhost', 11211);
     
     // Generar la clave de cache
-    $cacheKey = "chapter_detail_" . $slug . "_" . md5($wiki);
+    $cacheKey = "chapter_detail_" . $slug . "_" . $wiki;
     
     // Eliminar de la cache
     $purgeResult = $memcache->delete($cacheKey);
@@ -71,7 +71,7 @@ $wiki = isset($_GET['wiki']) ? $conn->real_escape_string($_GET['wiki']) : 'wikid
 // Cache
 $memcache = new Memcached();
 $memcache->addServer('localhost', 11211);
-$cacheKey = "chapter_detail_" . $slug . "_" . md5($wiki);
+$cacheKey = "chapter_detail_" . $slug . "_" . $wiki;
 $cacheDuration = 3600;
 
 $cachedData = $memcache->get($cacheKey);
