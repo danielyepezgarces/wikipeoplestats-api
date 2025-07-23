@@ -39,7 +39,7 @@ SELECT
     ) AS members_count
 FROM chapters c
 WHERE c.status = 'active'
-ORDER BY c.created_at DESC
+ORDER BY c.created_at DESC;
 ";
 
 $result = $conn->query($sql);
