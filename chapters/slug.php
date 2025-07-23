@@ -1,4 +1,6 @@
 <?php
+
+
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 
@@ -32,7 +34,6 @@ SELECT
     c.id,
     c.slug,
     c.name,
-    c.description,
     c.avatar_url,
     c.banner_url,
     c.banner_credits,
