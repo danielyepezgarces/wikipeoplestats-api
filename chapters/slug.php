@@ -172,7 +172,8 @@ ORDER BY cm.joined_at DESC
             "username" => $member['username'],
             "email" => $member['email'],
             "joined_at" => $member['joined_at'],
-            "contributions_count" => (int)$member['contributions_count']
+            "contributions_count" => (int)$member['contributions_count'],
+            "role" => $member['role_name'] ?? null
         ];
     }
 
