@@ -1,4 +1,3 @@
-<?php
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 
@@ -10,12 +9,14 @@ if (!isset($_GET['slug']) || empty($_GET['slug'])) {
     exit;
 }
 
+// Obtener parámetros
 $slug = $conn->real_escape_string($_GET['slug']);
+$wiki = isset($_GET['wiki']) ? $conn->real_escape_string($_GET['wiki']) : 'wikidatawiki'; // Valor por defecto
 
-// Opcional: usar Memcached para cachear
+// Cache
 $memcache = new Memcached();
 $memcache->addServer('localhost', 11211);
-$cacheKey = "chapter_detail_" . $slug;
+$cacheKey = "chapter_detail_" . $slug . "_" . md5($wiki);
 $cacheDuration = 3600;
 
 $cachedData = $memcache->get($cacheKey);
@@ -24,11 +25,13 @@ if ($cachedData) {
     exit;
 }
 
-$sql = "
+// Consulta principal del chapter
+$chapterSql = "
 SELECT
     c.id,
     c.slug,
     c.name,
+    c.description,
     c.avatar_url,
     c.banner_url,
     c.banner_credits,
@@ -50,11 +53,75 @@ WHERE c.slug = '$slug' AND c.status = 'active'
 LIMIT 1;
 ";
 
-$result = $conn->query($sql);
+$result = $conn->query($chapterSql);
 
 if ($result && $result->num_rows > 0) {
     $row = $result->fetch_assoc();
+    $chapterId = $row['id'];
+    $chapterCreationDate = $row['created_at'];
 
+    // Consulta de estadísticas con filtro por wiki
+    $statsSql = "
+    SELECT
+        COUNT(DISTINCT p.wikidata_id) AS totalPeople,
+        SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
+        SUM(CASE WHEN p.gender = 'Q6581097' THEN 1 ELSE 0 END) AS totalMen,
+        SUM(CASE WHEN p.gender NOT IN ('Q6581072', 'Q6581097') THEN 1 ELSE 0 END) AS otherGenders,
+        MAX(w.last_updated) AS last_updated
+    FROM people p
+    JOIN articles a ON p.wikidata_id = a.wikidata_id
+    JOIN project w ON a.site = w.site
+    JOIN users u ON u.username = a.creator_username
+    JOIN chapter_membership cm ON cm.user_id = u.id
+    WHERE cm.chapter_id = $chapterId
+    AND a.site = '$wiki'  -- Filtro por wiki/project
+    AND a.creation_date >= '$chapterCreationDate'
+    AND a.creation_date <= CURDATE()
+    AND a.creation_date >= cm.joined_at
+    ";
+
+    $statsResult = $conn->query($statsSql);
+    $statsData = $statsResult ? $statsResult->fetch_assoc() : [
+        'totalPeople' => 0,
+        'totalWomen' => 0,
+        'totalMen' => 0,
+        'otherGenders' => 0,
+        'last_updated' => null
+    ];
+
+    // Consulta de miembros con sus contribuciones en este wiki
+    $membersSql = "
+    SELECT
+        u.id,
+        u.username,
+        u.email,
+        cm.joined_at,
+        (
+            SELECT COUNT(DISTINCT a.wikidata_id)
+            FROM articles a
+            WHERE a.creator_username = u.username
+            AND a.site = '$wiki'
+            AND a.creation_date >= cm.joined_at
+        ) AS contributions_count
+    FROM users u
+    JOIN chapter_membership cm ON cm.user_id = u.id
+    WHERE cm.chapter_id = $chapterId
+    ORDER BY cm.joined_at DESC
+    ";
+
+    $membersResult = $conn->query($membersSql);
+    $members = [];
+    while ($member = $membersResult->fetch_assoc()) {
+        $members[] = [
+            "id" => $member['id'],
+            "username" => $member['username'],
+            "email" => $member['email'],
+            "joined_at" => $member['joined_at'],
+            "contributions_count" => (int)$member['contributions_count']
+        ];
+    }
+
+    // Construir respuesta final
     $chapter = [
         "slug" => $row["slug"],
         "group_name" => $row["name"],
@@ -65,7 +132,15 @@ if ($result && $result->num_rows > 0) {
         "banner_image" => $row["banner_url"],
         "avatar_image" => $row["avatar_url"],
         "image_credit" => $row["banner_credits"],
-        "stats" => null // puedes añadir estadísticas futuras aquí
+        "members" => $members,
+        "stats" => [
+            "totalPeople" => (int)$statsData['totalPeople'],
+            "totalWomen" => (int)$statsData['totalWomen'],
+            "totalMen" => (int)$statsData['totalMen'],
+            "otherGenders" => (int)$statsData['otherGenders'],
+            "last_updated" => $statsData['last_updated']
+        ],
+        "wiki" => $wiki  // Añadido para referencia
     ];
 
     $json = json_encode($chapter, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
