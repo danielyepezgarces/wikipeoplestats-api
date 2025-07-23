@@ -19,6 +19,8 @@ RewriteRule ^v1/chapters$ /chapters/index.php [L,QSA]
 # Rankings Rewrite
 RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFrame=$2 [L,QSA]
 
+# Redirects for chapters slugs
+RewriteRule ^v1/chapters/([a-zA-Z0-9_-]+)$ /chapters/slug.php?slug=$1 [L,QSA]
 
 <IfModule mod_headers.c>
     <FilesMatch "\.json$">
