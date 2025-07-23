@@ -14,6 +14,8 @@ RewriteRule ^v1/events/stats/([a-zA-Z0-9_-]+)/([0-9]+)/?$ events/stats.php?proje
 RewriteRule ^v1/events/graph/([a-zA-Z0-9_-]+)/([0-9]+)/?$ events/graph.php?project=$1&event_id=$2 [L,QSA]
 # Search Rewrite
 RewriteRule ^v1/search/genders$ /search/genders.php [L,QSA]
+# Chapters Rewrite
+RewriteRule ^v1/chapters$ /chapters/index.php [L,QSA]
 # Rankings Rewrite
 RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFrame=$2 [L,QSA]
 
