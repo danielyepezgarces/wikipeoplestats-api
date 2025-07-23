@@ -1,11 +1,63 @@
 <?php
 
-
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 
 require_once '../config.php';
 
+// Verificar si es una acción de purge
+if (isset($_GET['action']) && $_GET['action'] === 'purge') {
+    if (!isset($_GET['slug']) || empty($_GET['slug'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Missing chapter slug for purge"]);
+        exit;
+    }
+    
+    $slug = $_GET['slug'];
+    $wiki = isset($_GET['wiki']) ? $_GET['wiki'] : 'wikidatawiki';
+    
+    // Inicializar Memcached
+    $memcache = new Memcached();
+    $memcache->addServer('localhost', 11211);
+    
+    // Generar la clave de cache
+    $cacheKey = "chapter_detail_" . $slug . "_" . md5($wiki);
+    
+    // Eliminar de la cache
+    $purgeResult = $memcache->delete($cacheKey);
+    
+    if ($purgeResult) {
+        echo json_encode([
+            "success" => true,
+            "message" => "Cache purged successfully",
+            "cache_key" => $cacheKey,
+            "slug" => $slug,
+            "wiki" => $wiki
+        ]);
+    } else {
+        // También consideramos éxito si la clave no existía
+        $resultCode = $memcache->getResultCode();
+        if ($resultCode == Memcached::RES_NOTFOUND) {
+            echo json_encode([
+                "success" => true,
+                "message" => "Cache key was not found (already cleared or never existed)",
+                "cache_key" => $cacheKey,
+                "slug" => $slug,
+                "wiki" => $wiki
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                "error" => "Failed to purge cache",
+                "cache_key" => $cacheKey,
+                "memcached_error" => $memcache->getResultMessage()
+            ]);
+        }
+    }
+    exit;
+}
+
+// Código original para obtener datos del chapter
 if (!isset($_GET['slug']) || empty($_GET['slug'])) {
     http_response_code(400);
     echo json_encode(["error" => "Missing chapter slug"]);
