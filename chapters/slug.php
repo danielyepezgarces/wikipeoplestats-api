@@ -141,24 +141,28 @@ if ($result && $result->num_rows > 0) {
     ];
 
     // Consulta de miembros con sus contribuciones en este wiki
-    $membersSql = "
-    SELECT
-        u.id,
-        u.username,
-        u.email,
-        cm.joined_at,
-        (
-            SELECT COUNT(DISTINCT a.wikidata_id)
-            FROM articles a
-            WHERE a.creator_username = u.username
-            AND a.site = '$wiki'
-            AND a.creation_date >= cm.joined_at
-        ) AS contributions_count
-    FROM users u
-    JOIN chapter_membership cm ON cm.user_id = u.id
-    WHERE cm.chapter_id = $chapterId
-    ORDER BY cm.joined_at DESC
-    ";
+$membersSql = "
+SELECT
+    u.id,
+    u.username,
+    u.email,
+    cm.joined_at,
+    r.name AS role_name,
+    (
+        SELECT COUNT(DISTINCT a.wikidata_id)
+        FROM articles a
+        WHERE a.creator_username = u.username
+          AND a.site = '$wiki'
+          AND a.creation_date >= cm.joined_at
+    ) AS contributions_count
+FROM users u
+JOIN chapter_membership cm ON cm.user_id = u.id
+LEFT JOIN user_roles ur ON ur.user_id = u.id AND ur.chapter_id = cm.chapter_id
+LEFT JOIN roles r ON r.id = ur.role_id
+WHERE cm.chapter_id = $chapterId
+ORDER BY cm.joined_at DESC
+";
+
 
     $membersResult = $conn->query($membersSql);
     $members = [];
