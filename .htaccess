@@ -21,6 +21,7 @@ RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFram
 
 # Redirects for chapters slugs
 RewriteRule ^v1/chapters/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ /chapters/slug.php?slug=$1&wiki=$2 [L,QSA]
+RewriteRule ^v1/chapters/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /chapters/graph.php?slug=$1&project=$2&start_date=$3&end_date=$4 [L,QSA]
 
 <IfModule mod_headers.c>
     <FilesMatch "\.json$">
