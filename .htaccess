@@ -1,36 +1,50 @@
 RewriteEngine On
 RewriteBase /
 
+# -------------------------------
 # Rutas específicas de la API
+# -------------------------------
+
+# Stats por proyecto
 RewriteRule ^v1/stats/([a-zA-Z0-9_-]+)$ /stats.php?project=$1 [L,QSA]
-# Genders Rewrite
-RewriteRule ^v1/genders/graph/([a-zA-Z0-9_.-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /genders/graph.php?project=$1&start_date=$2&end_date=$3 [L,QSA]
-RewriteRule ^v1/genders/stats/([a-zA-Z0-9_.-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /genders/stats.php?project=$1&start_date=$2&end_date=$3 [L,QSA]
-# Users Rewrite
-RewriteRule ^v1/users/stats/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /users/stats.php?project=$1&username=$2&start_date=$3&end_date=$4 [L,QSA]
-RewriteRule ^v1/users/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /users/graph.php?project=$1&username=$2&start_date=$3&end_date=$4 [L,QSA]
-# Events Rewrite
-RewriteRule ^v1/events/stats/([a-zA-Z0-9_-]+)/([0-9]+)/?$ events/stats.php?project=$1&event_id=$2 [L,QSA]
-RewriteRule ^v1/events/graph/([a-zA-Z0-9_-]+)/([0-9]+)/?$ events/graph.php?project=$1&event_id=$2 [L,QSA]
-# Search Rewrite
-RewriteRule ^v1/search/genders$ /search/genders.php [L,QSA]
-# Chapters Rewrite
-RewriteRule ^v1/chapters$ /chapters/index.php [L,QSA]
-# Rankings Rewrite
+
+# Genders
+RewriteRule ^v1/genders/graph/([a-zA-Z0-9_.-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /genders/graph.php?project=$1&start_date=$2&end_date=$3 [L,QSA]
+RewriteRule ^v1/genders/stats/([a-zA-Z0-9_.-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /genders/stats.php?project=$1&start_date=$2&end_date=$3 [L,QSA]
+
+# Users
+RewriteRule ^v1/users/stats/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /users/stats.php?project=$1&username=$2&start_date=$3&end_date=$4 [L,QSA]
+RewriteRule ^v1/users/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /users/graph.php?project=$1&username=$2&start_date=$3&end_date=$4 [L,QSA]
+
+# Events
+RewriteRule ^v1/events/stats/([a-zA-Z0-9_-]+)/([0-9]+)/?$ /events/stats.php?project=$1&event_id=$2 [L,QSA]
+RewriteRule ^v1/events/graph/([a-zA-Z0-9_-]+)/([0-9]+)/?$ /events/graph.php?project=$1&event_id=$2 [L,QSA]
+
+# Search
+RewriteRule ^v1/search/genders/?$ /search/genders.php [L,QSA]
+
+# Chapters
+RewriteRule ^v1/chapters/?$ /chapters/index.php [L,QSA]
+RewriteRule ^v1/chapters/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ /chapters/slug.php?slug=$1&wiki=$2 [L,QSA]
+RewriteRule ^v1/chapters/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /chapters/graph.php?slug=$1&project=$2&start_date=$3&end_date=$4 [L,QSA]
+RewriteRule ^v1/chapters/stats/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2})?)?/?$ /chapters/stats.php?slug=$1&project=$2&start_date=$3&end_date=$4 [L,QSA]
+
+# Rankings
 RewriteRule ^v1/rankings/([^/]+)/([^/]+)/?$ /rankings/wiki.php?group=$1&timeFrame=$2 [L,QSA]
 
-# Redirects for chapters slugs
-RewriteRule ^v1/chapters/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ /chapters/slug.php?slug=$1&wiki=$2 [L,QSA]
-RewriteRule ^v1/chapters/graph/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_-]+)(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?(?:/([0-9]{4}-[0-9]{2}-[0-9]{2}))?$ /chapters/graph.php?slug=$1&project=$2&start_date=$3&end_date=$4 [L,QSA]
-
+# -------------------------------
+# Headers y CORS
+# -------------------------------
 <IfModule mod_headers.c>
+    # Cache para archivos JSON
     <FilesMatch "\.json$">
         Header set Cache-Control "public, max-age=3600, must-revalidate"
     </FilesMatch>
-    Header set Referrer-Policy "no-referrer"
-</IfModule>
 
-<IfModule mod_headers.c>
+    # Política de Referencia
+    Header set Referrer-Policy "no-referrer"
+
+    # CORS
     Header set Access-Control-Allow-Origin "*"
     Header set Access-Control-Allow-Methods "GET"
     Header set Access-Control-Allow-Headers "Content-Type, Authorization"
