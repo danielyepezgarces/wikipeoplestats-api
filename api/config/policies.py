@@ -81,12 +81,14 @@ REDIS_PORT = 6379
 REDIS_DB = 0
 
 # Database configuration (if needed for migration)
-# Note: In production, use environment variables for sensitive data
+# IMPORTANT: In production, use environment variables for sensitive data
+import os
+
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "",
-    "database": "wikipeoplestats",
+    "host": os.getenv("DB_HOST", "localhost"),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "wikipeoplestats"),
     "charset": "utf8mb4"
 }
 

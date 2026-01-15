@@ -93,8 +93,8 @@ def stats():
     # Normalize project
     project = normalize_project(project)
     
-    # Generate cache key
-    cache_key = f"api_response_{hashlib.md5(f'api_stats_{project}'.encode()).hexdigest()}"
+    # Generate cache key using SHA-256 (more secure than MD5)
+    cache_key = f"api_response_{hashlib.sha256(f'api_stats_{project}'.encode()).hexdigest()}"
     
     # Handle cache purge
     if action == 'purge':
@@ -134,7 +134,7 @@ def stats():
                 FROM people p
             """
         else:
-            sql = f"""
+            sql = """
                 SELECT 
                     COUNT(DISTINCT a.wikidata_id) AS totalPeople,
                     SUM(CASE WHEN p.gender = 'Q6581072' THEN 1 ELSE 0 END) AS totalWomen,
@@ -180,7 +180,11 @@ def stats():
             return jsonify({"error": "No data found"}), 404
             
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log error internally
+        import logging
+        logging.error(f"Database error: {str(e)}")
+        # Return generic error
+        return jsonify({"error": "Internal server error", "message": "An error occurred processing your request"}), 500
     finally:
         if 'conn' in locals():
             conn.close()
@@ -314,7 +318,11 @@ def genders_stats(params=None):
             return jsonify({"error": "No data found"}), 404
             
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log error internally
+        import logging
+        logging.error(f"Database error: {str(e)}")
+        # Return generic error
+        return jsonify({"error": "Internal server error", "message": "An error occurred processing your request"}), 500
     finally:
         if 'conn' in locals():
             conn.close()

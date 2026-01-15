@@ -66,7 +66,7 @@ def init_limiter(app):
     limiter = Limiter(
         app=app,
         key_func=get_rate_limit_key,
-        default_limits=[get_dynamic_limit],
+        default_limits=[lambda: get_dynamic_limit()],
         storage_uri=storage_uri,
         strategy="fixed-window",
         headers_enabled=True,
