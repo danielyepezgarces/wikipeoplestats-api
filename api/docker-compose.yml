@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Flask API
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - REDIS_HOST=redis
+      - MEMCACHED_HOST=memcached
+      - DB_HOST=db
+      - DB_USER=wikipeoplestats
+      - DB_PASSWORD=wikipeoplestats
+      - DB_NAME=wikipeoplestats
+    depends_on:
+      - redis
+      - memcached
+      - db
+    volumes:
+      - .:/app
+    command: flask --app app.py run --host=0.0.0.0
+
+  # Redis for rate limiting
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Memcached for caching
+  memcached:
+    image: memcached:1.6-alpine
+    ports:
+      - "11211:11211"
+
+  # MySQL database
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=wikipeoplestats
+      - MYSQL_USER=wikipeoplestats
+      - MYSQL_PASSWORD=wikipeoplestats
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  redis_data:
+  db_data:

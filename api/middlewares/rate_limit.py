@@ -49,11 +49,18 @@ def init_limiter(app):
     Returns:
         Configured Limiter instance
     """
-    # Try to use Redis as storage backend
+    # Try to use Redis as storage backend, fallback to memory if unavailable
+    import redis
+    storage_uri = "memory://"
+    
     try:
+        # Test Redis connection
+        redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, socket_connect_timeout=1)
+        redis_client.ping()
         storage_uri = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
-    except Exception:
-        # Fallback to memory storage if Redis is not available
+        app.logger.info(f"Using Redis for rate limiting: {storage_uri}")
+    except Exception as e:
+        app.logger.warning(f"Redis not available, using memory storage for rate limiting: {e}")
         storage_uri = "memory://"
     
     limiter = Limiter(

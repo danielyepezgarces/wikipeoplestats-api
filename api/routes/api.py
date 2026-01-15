@@ -15,22 +15,31 @@ api_bp = Blueprint('api', __name__)
 
 # Database connection helper
 def get_db_connection():
-    """Get a database connection."""
-    return pymysql.connect(
-        host=DB_CONFIG['host'],
-        user=DB_CONFIG['user'],
-        password=DB_CONFIG['password'],
-        database=DB_CONFIG['database'],
-        charset=DB_CONFIG['charset'],
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    """Get a database connection. Returns None if connection fails."""
+    try:
+        return pymysql.connect(
+            host=DB_CONFIG['host'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['database'],
+            charset=DB_CONFIG['charset'],
+            cursorclass=pymysql.cursors.DictCursor,
+            connect_timeout=2
+        )
+    except Exception:
+        # Database not available
+        return None
 
 # Memcached client helper
 def get_memcache_client():
     """Get a memcached client."""
     try:
-        return memcache_client.Client((MEMCACHED_HOST, MEMCACHED_PORT))
+        client = memcache_client.Client((MEMCACHED_HOST, MEMCACHED_PORT), connect_timeout=1, timeout=1)
+        # Test connection
+        client.version()
+        return client
     except Exception:
+        # Return None if memcached is not available
         return None
 
 # Project normalization helper
@@ -106,8 +115,11 @@ def stats():
                 return jsonify(response)
     
     # Query database
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable", "message": "Unable to connect to database"}), 503
+    
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
         
         if project == 'all':
@@ -227,8 +239,11 @@ def genders_stats(params=None):
                 response['executionTime'] = execution_time
                 return jsonify(response)
     
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database unavailable", "message": "Unable to connect to database"}), 503
+    
     try:
-        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Get project data
